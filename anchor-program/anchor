@@ -1,0 +1,4 @@
+#!/bin/bash
+docker run --name anchor -d --platform linux/x86_64 -v $PWD:/local anchor tail -f /dev/null 2>/dev/null
+# docker run -it --rm --platform linux/x86_64 -v $PWD:/local aptos aptos $@
+docker exec -it anchor anchor $@
