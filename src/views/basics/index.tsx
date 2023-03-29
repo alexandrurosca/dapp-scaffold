@@ -1,4 +1,5 @@
 
+import { Stake } from "components/Stake";
 import { FC } from "react";
 import { SignMessage } from '../../components/Bank';
 import { SendTransaction } from '../../components/SendTransaction';
@@ -14,7 +15,8 @@ export const BasicsView: FC = ({ }) => {
         </h1>
         {/* CONTENT GOES HERE */}
         <div className="text-center">
-          <SignMessage />
+          {/* <SignMessage /> */}
+          <Stake />
           {/* <SendTransaction /> */}
           {/* <SendVersionedTransaction /> */}
         </div>
