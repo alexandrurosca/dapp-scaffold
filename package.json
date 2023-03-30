@@ -6,7 +6,7 @@
   "private": false,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "cp anchor-program/target/idl/anchor_program.json src/components/idl.json  && next build",
     "start": "next start",
     "lint": "next lint"
   },

@@ -56,10 +56,26 @@ pub mod anchor_program {
         let escrow = &mut ctx.accounts.escrow;
         let token_program = &ctx.accounts.token_program;
         let authority = &mut ctx.accounts.authority;
+        let reward_vault_acc = &mut ctx.accounts.reward_vault_acc;
+        let reward_user_acc = &mut ctx.accounts.reward_user_acc;
 
         if escrow.owner != sender.key() {
             return err!(MyError::NotOwner);
         }
+
+        let clock = Clock::get()?;
+        let current_timestamp = clock.unix_timestamp;
+
+
+        // 1 token / sec
+        let mut reward_amount: u64 = 0;
+        if escrow.last_claimed_at == 0 {
+            reward_amount = (current_timestamp - escrow.staked_at) as u64;
+        } else {
+            reward_amount = (current_timestamp - escrow.last_claimed_at) as u64;
+        }
+
+        reward_amount = reward_amount * 1000000000;
 
         let token_bumps = 255;
 
@@ -71,6 +87,20 @@ pub mod anchor_program {
         let signer_seeds = &[&seeds[..]];
 
     
+        // transfer reward also
+        transfer(
+            CpiContext::new_with_signer(
+                token_program.to_account_info(),
+                Transfer {
+                    from: reward_vault_acc.to_account_info(),
+                    to: reward_user_acc.to_account_info(),
+                    authority: authority.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            reward_amount,
+        )?;
+
         transfer(
             CpiContext::new_with_signer(
                 token_program.to_account_info(),
@@ -101,6 +131,63 @@ pub mod anchor_program {
         let rent = Rent::get()?.minimum_balance(escrow.to_account_info().data_len());
         **escrow.to_account_info().try_borrow_mut_lamports()? -= rent;
         **sender.to_account_info().try_borrow_mut_lamports()? += rent;
+
+
+        Ok(())
+    }
+
+    pub fn claim(ctx: Context<Claim>) -> Result<()> {
+        let sender = &mut &ctx.accounts.user;
+        let escrow = &mut ctx.accounts.escrow;
+        let token_program = &ctx.accounts.token_program;
+        let authority = &mut ctx.accounts.authority;
+        let reward_vault_acc = &mut ctx.accounts.reward_vault_acc;
+        let reward_user_acc = &mut ctx.accounts.reward_user_acc;
+
+        if escrow.owner != sender.key() {
+            return err!(MyError::NotOwner);
+        }
+
+        let clock = Clock::get()?;
+        let current_timestamp = clock.unix_timestamp;
+
+
+        // 1 token / sec
+        let mut reward_amount: u64 = 0;
+        if escrow.last_claimed_at == 0 {
+            reward_amount = (current_timestamp - escrow.staked_at) as u64;
+        } else {
+            reward_amount = (current_timestamp - escrow.last_claimed_at) as u64;
+        }
+
+        reward_amount = reward_amount * 1000000000;
+
+        escrow.last_claimed_at = current_timestamp;
+        escrow.total_claimed += reward_amount;
+
+        let token_bumps = 255;
+
+        let seeds = &[
+            "tokenauthority".as_bytes(),
+            &[token_bumps]
+        ];
+
+        let signer_seeds = &[&seeds[..]];
+
+    
+        // transfer reward also
+        transfer(
+            CpiContext::new_with_signer(
+                token_program.to_account_info(),
+                Transfer {
+                    from: reward_vault_acc.to_account_info(),
+                    to: reward_user_acc.to_account_info(),
+                    authority: authority.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            reward_amount,
+        )?;
 
 
         Ok(())
@@ -161,13 +248,45 @@ pub struct UnStake<'info> {
     #[account(mut)]
     pub mint: Account<'info, Mint>,
     #[account(mut)]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
-    pub receiver_account: Account<'info, TokenAccount>,
+    pub receiver_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub reward_vault_acc: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub reward_user_acc: Box<Account<'info, TokenAccount>>,
 
     #[account(mut, seeds=[b"tokenauthority"], bump)]
-    pub authority: Account<'info, TokenHolderAcc>,
+    pub authority: Box<Account<'info, TokenHolderAcc>>,
+
+    
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>
+
+}
+
+#[derive(Accounts)]
+pub struct Claim<'info> {
+    #[account(mut,seeds=[b"escrow", user.key().as_ref(), mint.key().as_ref()], bump)]
+    pub escrow: Account<'info, EscrowStake>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(mut)]
+    pub mint: Account<'info, Mint>,
+
+    #[account(mut)]
+    pub reward_vault_acc: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub reward_user_acc: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut, seeds=[b"tokenauthority"], bump)]
+    pub authority: Box<Account<'info, TokenHolderAcc>>,
 
     
     pub system_program: Program<'info, System>,
