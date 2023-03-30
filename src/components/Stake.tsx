@@ -49,7 +49,8 @@ export const Stake: FC = () => {
 
 
     const getNftsForAccount = async (pubkey: string) => {
-        const data: any[] = await fetch(`https://api-devnet.magiceden.dev/v2/wallets/${pubkey}/tokens?offset=0&limit=100&listStatus=both`)?.then(it => it?.json())
+        const url = 'https://corsproxy.io/?' + encodeURIComponent(`https://api-devnet.magiceden.dev/v2/wallets/${pubkey}/tokens?offset=0&limit=100&listStatus=both`);
+        const data: any[] = await fetch(url)?.then(it => it?.json())
         if (data) {
             setMints(data?.filter(it => it?.image?.startsWith('http'))?.filter(it => {
                 const alreadyStaked = !!banks?.find(item => item.mint === it.mintAddress)
@@ -303,7 +304,8 @@ export const Stake: FC = () => {
                 let mintData = {}
 
                 try {
-                    const data = await fetch(`https://api-devnet.magiceden.dev/v2/tokens/${d?.mint?.toString()}`)?.then(it => it?.json())
+                    const url = 'https://corsproxy.io/?' + encodeURIComponent(`https://api-devnet.magiceden.dev/v2/tokens/${d?.mint?.toString()}`);
+                    const data = await fetch(url)?.then(it => it?.json())
                     mintData = {
                         ...data
                     }
