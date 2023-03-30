@@ -8,6 +8,7 @@
     "dev": "next dev",
     "build": "cp anchor-program/target/idl/anchor_program.json src/components/idl.json  && next build",
     "start": "next start",
+    "export": "next export",
     "lint": "next lint"
   },
   "dependencies": {
